@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <math.h>
+#include <set>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -10,11 +12,28 @@
 using Place = int;
 using Load = int;
 using Cost = int;
-using Route = std::vector<Place>;
 
-void generateAllRoutes(std::vector<Route>& routes, Route route, std::vector<Place>& places, int placeIndex)
+
+struct Road
 {
-    if (placeIndex == places.size())
+    int id;
+    Place source;
+    Place destination;
+    Cost cost;
+
+    bool operator<(const Road& other) const
+    {
+        return id < other.id;
+    }
+
+    Road(int id, Place source, Place destination, Cost cost) : id(id), source(source), destination(destination), cost(cost) {}
+};
+
+using Route = std::vector<Road>;
+
+void generateAllRoutes(std::vector<Route>& routes, Route route, std::vector<Road>& roads, int routeIndex)
+{
+    if (routeIndex == routes.size())
     {
         sort(route.begin(), route.end());
         do
@@ -24,63 +43,120 @@ void generateAllRoutes(std::vector<Route>& routes, Route route, std::vector<Plac
         return;
     }
 
-    generateAllRoutes(routes, route, places, placeIndex+1);
+    generateAllRoutes(routes, route, roads, routeIndex+1);
 
-    route.push_back(places[placeIndex]);
-    generateAllRoutes(routes, route, places, placeIndex+1);
+    route.push_back(roads[routeIndex]);
+    generateAllRoutes(routes, route, roads, routeIndex+1);
     route.pop_back();
 }
 
-bool checkVehicleCapacityFitRoute(Route& route, std::map<Place, Load>& demand, Load capacity)
+bool checkSourceDestinationIs0(Route& route)
 {
-    Load totalLoad = 0;
-    for (Place& place : route) totalLoad += demand[place];
-    return totalLoad <= capacity;
+    Road firstRoad = route.front();
+    size_t lastRouteIndex = route.size() - 1;
+    Road lastRoad = route[lastRouteIndex];
+
+    return firstRoad.source == 0 && lastRoad.destination == 0;
 }
 
-Cost calculateRouteCost(Route& route, std::map<std::pair<Place, Place>, Cost>& roads)
+bool checkAllDemands(Route& route, int numberOfPlaces)
 {
-    Cost totalCost = 0;
-    for (int i = 0; i < route.size() - 1; ++i)
+    std::set<Place> placesAttended;
+
+    for (Road& road : route)
+        placesAttended.insert(road.destination);
+
+    return placesAttended.size() == numberOfPlaces;
+}
+
+bool checkVehicleCapacity(Route& route, std::map<Place, Load> placesDemand, Load vehicleCapacity)
+{
+    Load totalLoad = 0;
+    for (Road& road : route)
     {
-        Place source = route[i];
-        Place destination = route[i+1];
-
-        if (roads.count(std::make_pair(source, destination)) == 0)
+        totalLoad += placesDemand[road.destination];
+        if (road.destination == 0)
         {
-            totalCost = INT_MAX;
-            break;
+            if (totalLoad > vehicleCapacity) return false;
+            totalLoad = 0;
         }
+    }
+    return true;
+}
 
-        totalCost += roads[std::make_pair(source, destination)];
+bool checkMaxNumberOfPlacesVisited(Route& route, int maxNumberOfPlacesAllowed)
+{
+    int numberOfPlacesVisited = 0;
+    for (Road& road : route)
+    {
+        numberOfPlacesVisited += 1;
+        if (road.destination == 0)
+        {
+            if (numberOfPlacesVisited > maxNumberOfPlacesAllowed) return false;
+            numberOfPlacesVisited = 0;
+        }
+    }
+    return true;
+}
+
+bool checkAllRestrictions(Route& route, std::map<Place, Load>& placesDemand, Load vehicleCapacity, int maxNumberOfPlacesAllowed)
+{
+    if (checkSourceDestinationIs0(route))
+    {
+        if (checkAllDemands(route, placesDemand.size()))
+        {
+            if (checkVehicleCapacity(route, placesDemand, vehicleCapacity))
+            {
+                if (checkMaxNumberOfPlacesVisited(route, maxNumberOfPlacesAllowed))
+                    return true;
+            }
+        }
     }
 
+    return false;
+}
+
+std::vector<Route> filterRoutes(std::vector<Route>& routes, std::map<Place, Load> placesDemand, Load vehicleCapacity, int maxNumberOfPlacesAllowed)
+{
+    std::vector<Route> validRoutes;
+
+    for (Route& route : routes)
+    {
+        if (checkAllRestrictions(route, placesDemand, vehicleCapacity, maxNumberOfPlacesAllowed))
+            validRoutes.push_back(route);
+    }
+
+    return validRoutes;
+}
+
+Cost calculateRouteCost(Route& route)
+{
+    Cost totalCost = 0;
+    for (Road& road : route)
+    {
+        totalCost += road.cost;
+    }
+ 
     return totalCost;
 }
 
-void updateSolutionIfBetterFound(Cost& currentCost, Cost& lowerCost, Route& route, Route& bestRoute)
-{
-    if (currentCost < lowerCost)
-    {
-        lowerCost = currentCost;
-        bestRoute = route;
-    }
-}
-
-std::pair<Route, Cost> solveVRPWithDemand(std::vector<Place> places, std::map<Place, Load> demand, std::map<std::pair<Place, Place>, Cost> roads, int vehicleCapacity)
+std::pair<Route, Cost> solveVRPWithDemand(std::map<Place, Load>& placesDemand, std::vector<Road>& roads, int vehicleCapacity, int maxNumberOfPlacesAllowed)
 {
     Route bestRoute;
     Cost lowerCost = INT_MAX;
 
     std::vector<Route> routes;
-    generateAllRoutes(routes, Route(), places, 0);
+    generateAllRoutes(routes, Route(), roads, 0);
 
-    for(Route& route : routes)
+    std::vector<Route> validRoutes = filterRoutes(routes, placesDemand, vehicleCapacity, maxNumberOfPlacesAllowed);
+
+    for(Route& route : validRoutes)
     {
-        if (checkVehicleCapacityFitRoute(route, demand, vehicleCapacity))
+        Cost cost = calculateRouteCost(route);
+        if (cost < lowerCost)
         {
-            Cost currentCost = calculateRouteCost(route, roads);
-            updateSolutionIfBetterFound(currentCost, lowerCost, route, bestRoute);
+            lowerCost = cost;
+            bestRoute = route;
         }
     }
 
@@ -98,27 +174,26 @@ int main()
     getline(file, line);
     int numberOfPlaces = std::stoi(line);
 
-    std::vector<Place> places;
-    std::map<Place, Load> demand;
+    std::map<Place, Load> placesDemand;
+    placesDemand[0] = 0;
 
     for (int i = 0; i < numberOfPlaces; ++i)
     {
         getline(file, line);
         std::istringstream iss(line);
-        Place place;
-        Load load;
+        int place;
+        Load demand;
 
-        iss >> place >> load;
-        places.push_back(place);
-        demand[place] = load;
+        iss >> place >> demand;
+        placesDemand[place] = demand;
     }
 
     getline(file, line);
     int numberOfRoads = std::stoi(line);
 
-    std::map<std::pair<Place, Place>, Cost> roads;
+    std::vector<Road> roads;
 
-    for (int i = 0; i < numberOfRoads; ++i)
+    for (int roadId = 0; roadId < numberOfRoads; ++roadId)
     {
         getline(file, line);
         std::istringstream iss(line);
@@ -127,16 +202,22 @@ int main()
         Cost cost;
 
         iss >> source >> destination >> cost;
-        roads[std::make_pair(source, destination)] = cost;
+        roads.push_back(Road(roadId, source, destination, cost));
     }
 
-    Load vehicleCapacity = 24;
+    Load vehicleCapacity = 30;
+    int maxNumberOfPlacesAllowed = 4;
 
-    std::pair<Route, Cost> solution = solveVRPWithDemand(places, demand, roads, vehicleCapacity);
+    std::pair<Route, Cost> solution = solveVRPWithDemand(placesDemand, roads, vehicleCapacity, maxNumberOfPlacesAllowed);
 
-    std::cout << "Place sequence of best route: ";
-    for (Place place : solution.first) std::cout << place << ", ";
-    std::cout << std::endl << std::endl;
+    Route bestRoute = solution.first;
+    Cost lowerCost = solution.second;
 
-    std::cout << "Best route cost: " << solution.second << std::endl;
+    std::cout << "Best route Place sequence: ";
+    for (Road& road : bestRoute) std::cout << road.source << " -> ";
+
+    int lastRoadIndex = bestRoute.size() - 1;
+    std::cout << bestRoute[lastRoadIndex].destination << std::endl << std::endl;
+
+    std::cout << "Best route cost: " << lowerCost << std::endl;
 }
