@@ -31,9 +31,9 @@ struct Road
 
 using Route = std::vector<Road>;
 
-void generateAllRoutes(std::vector<Route>& routes, Route route, std::vector<Road>& roads, int routeIndex)
+void generateAllRoutes(std::vector<Route>& routes, Route route, std::vector<Road>& roads, int roadIndex)
 {
-    if (routeIndex == routes.size())
+    if (roadIndex >= roads.size())
     {
         sort(route.begin(), route.end());
         do
@@ -43,10 +43,10 @@ void generateAllRoutes(std::vector<Route>& routes, Route route, std::vector<Road
         return;
     }
 
-    generateAllRoutes(routes, route, roads, routeIndex+1);
+    generateAllRoutes(routes, route, roads, roadIndex+1);
 
-    route.push_back(roads[routeIndex]);
-    generateAllRoutes(routes, route, roads, routeIndex+1);
+    route.push_back(roads[roadIndex]);
+    generateAllRoutes(routes, route, roads, roadIndex+1);
     route.pop_back();
 }
 
@@ -147,6 +147,8 @@ std::pair<Route, Cost> solveVRPWithDemand(std::map<Place, Load>& placesDemand, s
 
     std::vector<Route> routes;
     generateAllRoutes(routes, Route(), roads, 0);
+
+    std::cout << "Teste" << std::endl;
 
     std::vector<Route> validRoutes = filterRoutes(routes, placesDemand, vehicleCapacity, maxNumberOfPlacesAllowed);
 
