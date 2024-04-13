@@ -1,13 +1,11 @@
-#include <algorithm>
 #include <climits>
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <math.h>
 #include <set>
 #include <sstream>
-#include <utility>
 #include <vector>
+#include <string>
 
 using Place = int;
 using Load = int;
@@ -19,11 +17,6 @@ struct Road
     Place source;
     Place destination;
     Cost cost;
-
-    // bool operator==(const Road& other) const
-    // {
-    //     return source == other.source && destination == other.destination;
-    // }
 
     Road(Place source, Place destination, Cost cost) : source(source), destination(destination), cost(cost) {}
 };
@@ -47,9 +40,7 @@ class VehicleRoutingProblemWithDemand
         std::set<Place> placesVisited;
         placesVisited.insert(0);
         Route route{0};
-        std::cout << "Adicionou 0 como primeiro da rota" << std::endl;
         generateAllRouteCombinationsWithRestrictions(placesVisited, 0, 0, 0, route);
-        std::cout << "Gerou todas as combinações de rotas" << std::endl;
 
         std::set<Route> filteredRoutes = filterRoutesWithValidRoads();
 
@@ -87,6 +78,8 @@ class VehicleRoutingProblemWithDemand
             if (currentPlace == previousPlace)
                 continue;
 
+            if (placesVisited.find(currentPlace) != placesVisited.end() && currentPlace != 0)
+                continue;
             if (currentPlace == 0)
             {
                 numberOfPlacesVisited = 0;
@@ -98,10 +91,12 @@ class VehicleRoutingProblemWithDemand
                     return;
                 }
             }
-            else {
+
+            if (currentPlace != 0)
+            {
                 bool loadExceeded = vehicleLoad+placeDemand.second > vehicleCapacity;
                 bool placesExceeded = numberOfPlacesVisited+1 > maxNumberOfPlacesPerRoute;
-                if (loadExceeded || placesExceeded) return;
+                if (loadExceeded || placesExceeded) continue;
             }
 
             placesVisited.insert(currentPlace);
@@ -132,6 +127,7 @@ class VehicleRoutingProblemWithDemand
             if (routeIsValid)
                 filteredRoutes.insert(route);
         }
+        
         return filteredRoutes;
     }
 
@@ -151,70 +147,69 @@ class VehicleRoutingProblemWithDemand
 
 int main()
 {
-    std::ifstream file("../graphs/graph5.txt");
-    if (!file.is_open()) {
-        std::cerr << "Erro na abertura do arquivo ..." << std::endl;
-    }
-
-    std::string line;
-    getline(file, line);
-    int numberOfPlaces = std::stoi(line);
-
-    std::map<Place, Load> placesDemand;
-    placesDemand[0] = 0;
-
-    for (int i = 0; i < numberOfPlaces; ++i)
+    std::vector<std::string> fileNames = {"../graphs/graph0.txt", "../graphs/graph1.txt", "../graphs/graph2.txt"};
+    for (int j = 0; j < 4; ++j)
     {
+        std::ifstream file(fileNames[j]);
+        if (!file.is_open()) {
+            std::cerr << "Erro na abertura do arquivo ..." << std::endl;
+        }
+
+        std::string line;
         getline(file, line);
-        std::istringstream iss(line);
-        int place;
-        Load demand;
+        int numberOfPlaces = std::stoi(line);
 
-        iss >> place >> demand;
-        placesDemand[place] = demand;
-    }
+        std::map<Place, Load> placesDemand;
+        placesDemand[0] = 0;
 
-    for (int i = 0; i <= numberOfPlaces; ++i)
-    {
-        std::cout << i << ' ' << placesDemand[i] << std::endl;
-    }
+        for (int i = 0; i < numberOfPlaces; ++i)
+        {
+            getline(file, line);
+            std::istringstream iss(line);
+            int place;
+            Load demand;
 
-    numberOfPlaces++; // To consider place 0
+            iss >> place >> demand;
+            placesDemand[place] = demand;
+        }
 
-    getline(file, line);
-    int numberOfRoads = std::stoi(line);
+        numberOfPlaces++; // To consider place 0
 
-    std::map<Place, std::map<Place, Cost>> roads;
-
-    for (int roadId = 0; roadId < numberOfRoads; ++roadId)
-    {
         getline(file, line);
-        std::istringstream iss(line);
-        Place source;
-        Place destination;
-        Cost cost;
+        int numberOfRoads = std::stoi(line);
 
-        iss >> source >> destination >> cost;
-        roads[source][destination] = cost;
+        std::map<Place, std::map<Place, Cost>> roads;
+
+        for (int roadId = 0; roadId < numberOfRoads; ++roadId)
+        {
+            getline(file, line);
+            std::istringstream iss(line);
+            Place source;
+            Place destination;
+            Cost cost;
+
+            iss >> source >> destination >> cost;
+            roads[source][destination] = cost;
+        }
+
+        Load vehicleCapacity = 30;
+        int maxNumberOfPlacesPerRoute = 4;
+
+        VehicleRoutingProblemWithDemand VRPWithDemand = VehicleRoutingProblemWithDemand(
+            numberOfPlaces,
+            vehicleCapacity,
+            maxNumberOfPlacesPerRoute,
+            roads,
+            placesDemand
+        );
+
+        VRPWithDemand.solve();
+
+        Route bestRoute = VRPWithDemand.bestRoute;
+        Cost lowerCost = VRPWithDemand.lowerCost;
+
+        std::cout << "Best route Place sequence: ";
+        for (Place& place : bestRoute) std::cout << place << " -> ";
+        std::cout << std::endl << "Best route cost: " << lowerCost << std::endl;
     }
-
-    Load vehicleCapacity = 30;
-    int maxNumberOfPlacesPerRoute = 4;
-
-    VehicleRoutingProblemWithDemand VRPWithDemand = VehicleRoutingProblemWithDemand(
-        numberOfPlaces,
-        vehicleCapacity,
-        maxNumberOfPlacesPerRoute,
-        roads,
-        placesDemand
-    );
-
-    VRPWithDemand.solve();
-
-    Route bestRoute = VRPWithDemand.bestRoute;
-    Cost lowerCost = VRPWithDemand.lowerCost;
-
-    std::cout << "Best route Place sequence: ";
-    for (Place& place : bestRoute) std::cout << place << " -> ";
-    std::cout << "Best route cost: " << lowerCost << std::endl;
 }
