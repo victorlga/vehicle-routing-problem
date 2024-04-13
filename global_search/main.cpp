@@ -147,11 +147,12 @@ class VehicleRoutingProblemWithDemand
 
 int main()
 {
-    std::vector<std::string> fileNames = {"../graphs/graph0.txt", "../graphs/graph1.txt", "../graphs/graph2.txt"};
+    std::vector<std::string> fileNames = {"../graphs/graph0.txt", "../graphs/graph1.txt", "../graphs/graph2.txt", "../graphs/graph3.txt"};
     for (int j = 0; j < 4; ++j)
     {
         std::ifstream file(fileNames[j]);
-        if (!file.is_open()) {
+        if (!file.is_open())
+        {
             std::cerr << "Erro na abertura do arquivo ..." << std::endl;
         }
 
@@ -208,8 +209,10 @@ int main()
         Route bestRoute = VRPWithDemand.bestRoute;
         Cost lowerCost = VRPWithDemand.lowerCost;
 
+        std::cout << "Running solution for " << fileNames[j] << std::endl;
         std::cout << "Best route Place sequence: ";
         for (Place& place : bestRoute) std::cout << place << " -> ";
         std::cout << std::endl << "Best route cost: " << lowerCost << std::endl;
+        std::cout << "--------------------------------------------------------" << std::endl;
     }
 }
