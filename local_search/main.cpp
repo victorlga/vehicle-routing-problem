@@ -21,7 +21,6 @@ struct Road
     Road(Place source, Place destination, Cost cost) : source(source), destination(destination), cost(cost) {}
 };
 
-
 class VehicleRoutingProblemWithDemand
 {
     public:
@@ -97,17 +96,6 @@ class VehicleRoutingProblemWithDemand
         return cheaperRoad;
     }
 
-    Cost calculateRouteCost(Route route)
-    {
-        Cost totalCost = 0;
-        for (size_t i = 0; i < route.size()-1; ++i)
-        {
-            Place source = route[i];
-            Place destination = route[i+1];
-            totalCost += roads[source][destination];
-        }
-        return totalCost;
-    }
 };
 
 int main()
