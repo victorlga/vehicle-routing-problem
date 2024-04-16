@@ -74,16 +74,25 @@ class VehicleRoutingProblemWithDemand
         for (auto const& placeDemand : placesDemand)
         {
             Place currentPlace = placeDemand.first;
-            
+
             if (currentPlace == previousPlace)
                 continue;
 
             if (placesVisited.find(currentPlace) != placesVisited.end() && currentPlace != 0)
                 continue;
+
+            if (currentPlace != 0)
+            {
+                bool loadExceeded = vehicleLoad+placeDemand.second > vehicleCapacity;
+                bool placesExceeded = (numberOfPlacesVisited+1) > maxNumberOfPlacesPerRoute;
+                if (loadExceeded || placesExceeded) continue;
+            }
+
             if (currentPlace == 0)
             {
                 numberOfPlacesVisited = 0;
                 vehicleLoad = 0;
+
                 if (placesVisited.size() == numberOfPlaces)
                 {
                     route.push_back(currentPlace);
@@ -92,16 +101,15 @@ class VehicleRoutingProblemWithDemand
                 }
             }
 
-            if (currentPlace != 0)
-            {
-                bool loadExceeded = vehicleLoad+placeDemand.second > vehicleCapacity;
-                bool placesExceeded = numberOfPlacesVisited+1 > maxNumberOfPlacesPerRoute;
-                if (loadExceeded || placesExceeded) continue;
-            }
-
             placesVisited.insert(currentPlace);
             route.push_back(currentPlace);
-            generateAllRouteCombinationsWithRestrictions(placesVisited, numberOfPlacesVisited+1, currentPlace, vehicleLoad+placeDemand.second, route);
+            generateAllRouteCombinationsWithRestrictions(
+                placesVisited,
+                numberOfPlacesVisited+1,
+                currentPlace,
+                vehicleLoad+placeDemand.second,
+                route
+            );
             route.pop_back();
             placesVisited.extract(currentPlace);
         }
