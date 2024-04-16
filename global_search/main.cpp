@@ -201,7 +201,7 @@ int main()
             roads[source][destination] = cost;
         }
 
-        Load vehicleCapacity = 30;
+        Load vehicleCapacity = 10;
         int maxNumberOfPlacesPerRoute = 4;
 
         VehicleRoutingProblemWithDemand VRPWithDemand = VehicleRoutingProblemWithDemand(
