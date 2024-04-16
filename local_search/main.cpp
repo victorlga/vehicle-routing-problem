@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <random>
 
 using Place = int;
 using Load = int;
@@ -25,65 +26,100 @@ class VehicleRoutingProblemWithDemand
 {
     public:
     Route bestRoute;
-    Cost lowerCost;
+    Cost lowerCost = INT_MAX;
 
     VehicleRoutingProblemWithDemand(
         int numberOfPlaces,
         int vehicleCapacity,
         int maxNumberOfPlacesPerRoute,
-        std::map<Place, Load>& placesDemand,
+        std::map<Place, Load> placesDemand,
         std::map<Place, std::map<Place, Cost>> roads
     ) : placesDemand(placesDemand), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), numberOfPlaces(numberOfPlaces), roads(roads) {}
 
     void solve()
     {
-        placesVisited.insert(0);
-        bestRoute.push_back(0);
-        lowerCost = 0;
-        int numberOfPlacesVisited = 0;
-        Load vehicleLoad = 0;
-
-        int routePlaceIndex = 0;
-        Place currentPlace = bestRoute[routePlaceIndex];
-        while (placesVisited.size() < numberOfPlaces)
+        for (int i = 0; i < 1000; ++i)
         {
-            std::map<Place, Cost> availableRoads = roads[currentPlace];
-            std::pair<Place, Cost> nextRoad = findCheaperValidRoad(availableRoads, numberOfPlacesVisited, vehicleLoad);
-            placesVisited.insert(nextRoad.first);
-            bestRoute.push_back(nextRoad.first);
-            lowerCost += nextRoad.second;
-            vehicleLoad += placesDemand[nextRoad.first];
-            routePlaceIndex++;
-            currentPlace = bestRoute[routePlaceIndex];
+            std::pair<Route, Cost> result = generateRouteAndCost();
+            if (result.second < lowerCost)
+            {
+                bestRoute = result.first;
+                lowerCost = result.second;
+            }
         }
-
-        bestRoute.push_back(0);
-        lowerCost += roads[bestRoute.back()][0];
     }
 
     private:
     int numberOfPlaces;
     int vehicleCapacity;
     int maxNumberOfPlacesPerRoute;
-    std::set<Place> placesVisited;
     std::map<Place, std::map<Place, Cost>> roads;
-    std::map<Place, Load>& placesDemand;
+    std::map<Place, Load> placesDemand;
 
-    std::pair<Place, Cost> findCheaperValidRoad(std::map<Place, Cost> availableRoads, Cost& numberOfPlacesVisited, Load& vehicleLoad)
+    std::pair<Route, Cost> generateRouteAndCost()
     {
-        std::pair<Place, Cost> cheaperRoad(INT_MAX, INT_MAX);
-        for (auto const& place : availableRoads)
-        {
+        std::set<Place> placesVisited;
+        placesVisited.insert(0);
+        Route route = {0};
+        Cost cost = 0;
+        int numberOfPlacesVisited = 0;
+        Load vehicleLoad = 0;
 
-            bool newPlaceOrStart = (placesVisited.find(place.first) == placesVisited.end() || place.first == 0);
-            if (place.second < cheaperRoad.second && newPlaceOrStart)
-                cheaperRoad = place;
+        int routePlaceIndex = 0;
+        Place currentPlace = route[routePlaceIndex];
+        std::map<Place, Cost> availableRoads;
+        std::pair<Place, Cost> nextRoad;
+
+        while (placesVisited.size() < numberOfPlaces)
+        {
+            availableRoads = roads[currentPlace];
+            nextRoad = findCheaperValidRoad(availableRoads, numberOfPlacesVisited, vehicleLoad, placesVisited, currentPlace);
+            placesVisited.insert(nextRoad.first);
+            route.push_back(nextRoad.first);
+            cost += nextRoad.second;
+            vehicleLoad += placesDemand[nextRoad.first];
+            routePlaceIndex++;
+            currentPlace = route[routePlaceIndex];
+        }
+
+        route.push_back(0);
+        cost += roads[route.back()][0];
+
+        return std::pair<Route, Cost>(route, cost);
+    }
+
+    std::pair<Place, Cost> findCheaperValidRoad(std::map<Place, Cost> availableRoads, int& numberOfPlacesVisited, Load& vehicleLoad, std::set<Place>& placesVisited, Place previousPlace)
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<> uniformRealDistr(0.0, 1.0);
+        std::uniform_int_distribution<> uniformIntDistr(0, INT_MAX);
+
+        std::pair<Place, Cost> cheaperRoad(INT_MAX, INT_MAX);
+
+        for (auto const& road : availableRoads)
+        {
+            bool newPlaceOrStart = (placesVisited.find(road.first) == placesVisited.end() || road.first == 0);
+            if (road.second < cheaperRoad.second && newPlaceOrStart && road.first != previousPlace)
+                cheaperRoad = road;
+        }
+
+        if (uniformRealDistr(gen) > 0.7)
+        {
+            int randomPlaceIndex = uniformIntDistr(gen) % availableRoads.size();
+
+            std::vector<Place> availablePlaces;
+            for (const auto& road : availableRoads)
+                availablePlaces.push_back(road.first);
+            int randomPlace = availablePlaces[randomPlaceIndex];
+
+            if (placesVisited.find(randomPlace) == placesVisited.end() || randomPlace == 0 && randomPlace != previousPlace)
+                cheaperRoad = std::pair<Place, Cost>(randomPlace, availableRoads[randomPlace]);
         }
 
         numberOfPlacesVisited++;
         vehicleLoad += placesDemand[cheaperRoad.first];
 
-    
         if (vehicleLoad > vehicleCapacity || numberOfPlacesVisited > maxNumberOfPlacesPerRoute)
             cheaperRoad = std::pair<Place, Cost>(0, availableRoads[0]);
         
