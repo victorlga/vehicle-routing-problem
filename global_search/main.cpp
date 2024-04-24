@@ -88,6 +88,9 @@ class VehicleRoutingProblemWithDemand
                 if (loadExceeded || placesExceeded) continue;
             }
 
+            placesVisited.insert(currentPlace);
+            route.push_back(currentPlace);
+
             if (currentPlace == 0)
             {
                 numberOfPlacesVisited = 0;
@@ -95,14 +98,11 @@ class VehicleRoutingProblemWithDemand
 
                 if (placesVisited.size() == numberOfPlaces)
                 {
-                    route.push_back(currentPlace);
                     routes.push_back(route);
                     return;
                 }
             }
 
-            placesVisited.insert(currentPlace);
-            route.push_back(currentPlace);
             generateAllRouteCombinationsWithRestrictions(
                 placesVisited,
                 numberOfPlacesVisited+1,
@@ -155,7 +155,13 @@ class VehicleRoutingProblemWithDemand
 
 int main()
 {
-    std::vector<std::string> fileNames = {"../graphs/graph0.txt", "../graphs/graph1.txt", "../graphs/graph2.txt", "../graphs/graph3.txt"};
+    std::vector<std::string> fileNames = {
+        "../graphs/graph0.txt",
+        "../graphs/graph1.txt",
+        "../graphs/graph2.txt",
+        "../graphs/graph3.txt"
+    };
+
     for (int j = 0; j < 4; ++j)
     {
         std::ifstream file(fileNames[j]);
