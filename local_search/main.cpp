@@ -38,7 +38,7 @@ class VehicleRoutingProblemWithDemand
 
     void solve()
     {
-        for (int i = 0; i < 1000; ++i)
+        for (int i = 0; i < 100; ++i)
         {
             std::pair<Route, Cost> result = generateRouteAndCost();
             if (result.second < lowerCost)
@@ -82,8 +82,8 @@ class VehicleRoutingProblemWithDemand
             currentPlace = route[routePlaceIndex];
         }
 
-        route.push_back(0);
         cost += roads[route.back()][0];
+        route.push_back(0);
 
         return std::pair<Route, Cost>(route, cost);
     }
@@ -136,7 +136,13 @@ class VehicleRoutingProblemWithDemand
 
 int main()
 {
-    std::vector<std::string> fileNames = {"../graphs/graph0.txt", "../graphs/graph1.txt", "../graphs/graph2.txt", "../graphs/graph3.txt"};
+    std::vector<std::string> fileNames = {
+        "../graphs/graph0.txt",
+        "../graphs/graph1.txt",
+        "../graphs/graph2.txt",
+        "../graphs/graph3.txt"
+    };
+
     for (int j = 0; j < 4; ++j)
     {
         std::ifstream file(fileNames[j]);
