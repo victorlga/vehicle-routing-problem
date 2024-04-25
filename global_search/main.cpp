@@ -83,9 +83,10 @@ class VehicleRoutingProblemWithDemand
 
             if (currentPlace != 0)
             {
-                bool loadExceeded = vehicleLoad+placeDemand.second > vehicleCapacity;
+                bool loadExceeded = (vehicleLoad+placeDemand.second) > vehicleCapacity;
                 bool placesExceeded = (numberOfPlacesVisited+1) > maxNumberOfPlacesPerRoute;
-                if (loadExceeded || placesExceeded) continue;
+                if (loadExceeded || placesExceeded)
+                    continue;
             }
 
             placesVisited.insert(currentPlace);
@@ -93,23 +94,19 @@ class VehicleRoutingProblemWithDemand
 
             if (currentPlace == 0)
             {
-                numberOfPlacesVisited = 0;
-                vehicleLoad = 0;
-
                 if (placesVisited.size() == numberOfPlaces)
-                {
                     routes.push_back(route);
-                    return;
-                }
+                generateAllRouteCombinationsWithRestrictions(placesVisited, 0, currentPlace, 0, route);
+            } else {
+                generateAllRouteCombinationsWithRestrictions(
+                    placesVisited,
+                    numberOfPlacesVisited+1,
+                    currentPlace,
+                    vehicleLoad+placeDemand.second,
+                    route
+                );
             }
 
-            generateAllRouteCombinationsWithRestrictions(
-                placesVisited,
-                numberOfPlacesVisited+1,
-                currentPlace,
-                vehicleLoad+placeDemand.second,
-                route
-            );
             route.pop_back();
             placesVisited.extract(currentPlace);
         }
@@ -156,13 +153,14 @@ class VehicleRoutingProblemWithDemand
 int main()
 {
     std::vector<std::string> fileNames = {
+        "../graphs/brito.txt",
         "../graphs/graph0.txt",
         "../graphs/graph1.txt",
         "../graphs/graph2.txt",
-        "../graphs/graph3.txt"
+        "../graphs/graph3.txt",
     };
 
-    for (int j = 0; j < 4; ++j)
+    for (int j = 0; j < fileNames.size(); ++j)
     {
         std::ifstream file(fileNames[j]);
         if (!file.is_open())
@@ -207,8 +205,8 @@ int main()
             roads[source][destination] = cost;
         }
 
-        Load vehicleCapacity = 10;
-        int maxNumberOfPlacesPerRoute = 4;
+        Load vehicleCapacity = 20;
+        int maxNumberOfPlacesPerRoute = 2;
 
         VehicleRoutingProblemWithDemand VRPWithDemand = VehicleRoutingProblemWithDemand(
             numberOfPlaces,
