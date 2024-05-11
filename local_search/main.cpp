@@ -22,19 +22,19 @@ struct Road
     Road(Place source, Place destination, Cost cost) : source(source), destination(destination), cost(cost) {}
 };
 
-class VehicleRoutingProblemWithDemand
+class CapacitatedVehicleRoutingProblem
 {
     public:
     Route bestRoute;
     Cost lowerCost = INT_MAX;
 
-    VehicleRoutingProblemWithDemand(
+    CapacitatedVehicleRoutingProblem(
         int numberOfPlaces,
         int vehicleCapacity,
         int maxNumberOfPlacesPerRoute,
         std::map<Place, Load> placesDemand,
         std::map<Place, std::map<Place, Cost>> roads
-    ) : placesDemand(placesDemand), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), numberOfPlaces(numberOfPlaces), roads(roads) {}
+    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), placesDemand(placesDemand), roads(roads) {}
 
     void solve()
     {
@@ -53,8 +53,8 @@ class VehicleRoutingProblemWithDemand
     int numberOfPlaces;
     int vehicleCapacity;
     int maxNumberOfPlacesPerRoute;
-    std::map<Place, std::map<Place, Cost>> roads;
     std::map<Place, Load> placesDemand;
+    std::map<Place, std::map<Place, Cost>> roads;
 
     std::pair<Route, Cost> generateRouteAndCost()
     {
@@ -106,14 +106,14 @@ class VehicleRoutingProblemWithDemand
 
         if (uniformRealDistr(gen) > 0.7)
         {
-            int randomPlaceIndex = uniformIntDistr(gen) % availableRoads.size();
-
             std::vector<Place> availablePlaces;
             for (const auto& road : availableRoads)
                 availablePlaces.push_back(road.first);
+
+            int randomPlaceIndex = uniformIntDistr(gen) % availableRoads.size();
             int randomPlace = availablePlaces[randomPlaceIndex];
 
-            if (placesVisited.find(randomPlace) == placesVisited.end() || randomPlace == 0 && randomPlace != previousPlace)
+            if (placesVisited.find(randomPlace) == placesVisited.end() || (randomPlace == 0 && randomPlace != previousPlace))
                 cheaperRoad = std::pair<Place, Cost>(randomPlace, availableRoads[randomPlace]);
         }
 
@@ -122,7 +122,7 @@ class VehicleRoutingProblemWithDemand
 
         if (vehicleLoad > vehicleCapacity || numberOfPlacesVisited > maxNumberOfPlacesPerRoute)
             cheaperRoad = std::pair<Place, Cost>(0, availableRoads[0]);
-        
+
         if (cheaperRoad.first == 0)
         {
             numberOfPlacesVisited = 0;
@@ -191,7 +191,7 @@ int main()
         Load vehicleCapacity = 10;
         int maxNumberOfPlacesPerRoute = 4;
 
-        VehicleRoutingProblemWithDemand VRPWithDemand = VehicleRoutingProblemWithDemand(
+        CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
             numberOfPlaces,
             vehicleCapacity,
             maxNumberOfPlacesPerRoute,
@@ -199,10 +199,10 @@ int main()
             roads
         );
 
-        VRPWithDemand.solve();
+        CVRP.solve();
 
-        Route bestRoute = VRPWithDemand.bestRoute;
-        Cost lowerCost = VRPWithDemand.lowerCost;
+        Route bestRoute = CVRP.bestRoute;
+        Cost lowerCost = CVRP.lowerCost;
 
         std::cout << "Running solution for " << fileNames[j] << std::endl;
         std::cout << "Best route Place sequence: ";
