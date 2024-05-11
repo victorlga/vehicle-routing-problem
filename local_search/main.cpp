@@ -38,7 +38,7 @@ class CapacitatedVehicleRoutingProblem
 
     void solve()
     {
-        for (int i = 0; i < 100; ++i)
+        for (int i = 0; i < 10000; ++i)
         {
             std::pair<Route, Cost> result = generateRouteAndCost();
             if (result.second < lowerCost)
