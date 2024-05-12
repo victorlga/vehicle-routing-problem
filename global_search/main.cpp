@@ -10,7 +10,14 @@
 using Place = int;
 using Load = int;
 using Cost = int;
-using Route = std::vector<Place>;
+
+struct Route
+{
+    std::vector<Place> places;
+    Cost cost;
+
+    Route(std::vector<Place> places, Cost cost) : places(places), cost(cost) {}
+};
 
 struct Road
 {
@@ -21,37 +28,30 @@ struct Road
     Road(Place source, Place destination, Cost cost) : source(source), destination(destination), cost(cost) {}
 };
 
-class VehicleRoutingProblemWithDemand
+class CapacitatedVehicleRoutingProblem
 {
     public:
-    Route bestRoute;
-    Cost lowerCost = INT_MAX;
+    Route bestRoute = Route({}, INT_MAX);
 
-    VehicleRoutingProblemWithDemand(
+    CapacitatedVehicleRoutingProblem(
         int numberOfPlaces,
         int vehicleCapacity,
         int maxNumberOfPlacesPerRoute,
         std::map<Place, std::map<Place, Cost>> roads,
         std::map<Place, Load>& placesDemand
-    ) : placesDemand(placesDemand), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), roads(roads), numberOfPlaces(numberOfPlaces) {}
+    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), roads(roads), placesDemand(placesDemand) {}
 
     void solve()
     {
         std::set<Place> placesVisited;
         placesVisited.insert(0);
-        Route route{0};
+        Route route = Route({0}, 0);
         generateAllRouteCombinationsWithRestrictions(placesVisited, 0, 0, 0, route);
 
-        std::set<Route> filteredRoutes = filterRoutesWithValidRoads();
-
-        for(auto& route : filteredRoutes)
+        for(auto& route : routes)
         {
-            Cost cost = calculateRouteCost(route);
-            if (cost < lowerCost)
-            {
-                lowerCost = cost;
+            if (route.cost < bestRoute.cost)
                 bestRoute = route;
-            }
         }
     }
 
@@ -75,9 +75,15 @@ class VehicleRoutingProblemWithDemand
         {
             Place currentPlace = placeDemand.first;
 
+            // Filter repeated places
             if (currentPlace == previousPlace)
                 continue;
 
+            // Filter unavailable roads
+            if (roads[previousPlace].find(currentPlace) == roads[previousPlace].end())
+                continue;
+
+            // Filter places already visited
             if (placesVisited.find(currentPlace) != placesVisited.end() && currentPlace != 0)
                 continue;
 
@@ -89,8 +95,9 @@ class VehicleRoutingProblemWithDemand
                     continue;
             }
 
+            route.cost += roads[previousPlace][currentPlace];
             placesVisited.insert(currentPlace);
-            route.push_back(currentPlace);
+            route.places.push_back(currentPlace);
 
             if (currentPlace == 0)
             {
@@ -107,45 +114,10 @@ class VehicleRoutingProblemWithDemand
                 );
             }
 
-            route.pop_back();
+            route.places.pop_back();
             placesVisited.extract(currentPlace);
+            route.cost -= roads[previousPlace][currentPlace];
         }
-    }
-
-    std::set<Route> filterRoutesWithValidRoads()
-    {
-        std::set<Route> filteredRoutes;
-        for (Route& route : routes)
-        {
-            bool routeIsValid = true;
-            for (size_t i = 0; i < route.size()-1; ++i)
-            {
-                Place source = route[i];
-                Place destination = route[i+1];
-                if (roads[source].find(destination) == roads[source].end())
-                {
-                    routeIsValid = false;
-                    break;
-                }
-            }
-
-            if (routeIsValid)
-                filteredRoutes.insert(route);
-        }
-        
-        return filteredRoutes;
-    }
-
-    Cost calculateRouteCost(Route route)
-    {
-        Cost totalCost = 0;
-        for (size_t i = 0; i < route.size()-1; ++i)
-        {
-            Place source = route[i];
-            Place destination = route[i+1];
-            totalCost += roads[source][destination];
-        }
-        return totalCost;
     }
 };
 
@@ -153,7 +125,6 @@ class VehicleRoutingProblemWithDemand
 int main()
 {
     std::vector<std::string> fileNames = {
-        "../graphs/brito.txt",
         "../graphs/graph0.txt",
         "../graphs/graph1.txt",
         "../graphs/graph2.txt",
@@ -208,7 +179,7 @@ int main()
         Load vehicleCapacity = 20;
         int maxNumberOfPlacesPerRoute = 2;
 
-        VehicleRoutingProblemWithDemand VRPWithDemand = VehicleRoutingProblemWithDemand(
+        CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
             numberOfPlaces,
             vehicleCapacity,
             maxNumberOfPlacesPerRoute,
@@ -216,15 +187,14 @@ int main()
             placesDemand
         );
 
-        VRPWithDemand.solve();
+        CVRP.solve();
 
-        Route bestRoute = VRPWithDemand.bestRoute;
-        Cost lowerCost = VRPWithDemand.lowerCost;
+        Route bestRoute = CVRP.bestRoute;
 
         std::cout << "Running solution for " << fileNames[j] << std::endl;
         std::cout << "Best route Place sequence: ";
-        for (Place& place : bestRoute) std::cout << place << " -> ";
-        std::cout << std::endl << "Best route cost: " << lowerCost << std::endl;
+        for (Place& place : bestRoute.places) std::cout << place << " -> ";
+        std::cout << std::endl << "Best route cost: " << bestRoute.cost << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
 }
