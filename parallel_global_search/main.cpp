@@ -8,6 +8,7 @@
 #include <string>
 #include <omp.h>
 #include <mpi.h>
+#include <chrono>
 
 using Place = int;
 using Load = int;
@@ -214,8 +215,7 @@ class CapacitatedVehicleRoutingProblem
 };
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
     int world_size, world_rank;
@@ -226,18 +226,24 @@ int main(int argc, char *argv[])
         std::cout << "Running solution with " << world_size << " processes" << std::endl;
 
     std::vector<std::string> fileNames = {
-        "../graphs/graph0.txt",
-        "../graphs/graph1.txt",
-        "../graphs/graph2.txt",
-        "../graphs/graph3.txt",
+        "../graphs/graph8_25.txt",
+        "../graphs/graph8_50.txt",
+        "../graphs/graph8_75.txt",
+        "../graphs/graph9_50.txt",
+        "../graphs/graph10_50.txt",
+        "../graphs/graph11_50.txt",
+        "../graphs/graph12_25.txt",
+        "../graphs/graph12_50.txt",
+        "../graphs/graph12_75.txt",
     };
 
-    for (int j = 0; j < fileNames.size(); ++j)
-    {
+    for (int j = 0; j < fileNames.size(); ++j) {
+        auto start = std::chrono::high_resolution_clock::now(); // Start time measurement
+
         std::ifstream file(fileNames[j]);
-        if (!file.is_open())
-        {
-            std::cerr << "Erro na abertura do arquivo ..." << std::endl;
+        if (!file.is_open()) {
+            std::cerr << "Error opening file: " << fileNames[j] << std::endl;
+            continue; // Skip to next file if the current file cannot be opened
         }
 
         std::string line;
@@ -245,40 +251,34 @@ int main(int argc, char *argv[])
         int numberOfPlaces = std::stoi(line);
 
         std::map<Place, Load> placesDemand;
-        placesDemand[0] = 0;
+        placesDemand[0] = 0; // Assume place 0 as the depot
 
-        for (int i = 0; i < numberOfPlaces; ++i)
-        {
+        for (int i = 0; i < numberOfPlaces; ++i) {
             getline(file, line);
             std::istringstream iss(line);
-            int place;
+            Place place;
             Load demand;
-
             iss >> place >> demand;
             placesDemand[place] = demand;
         }
 
-        numberOfPlaces++; // To consider place 0
+        numberOfPlaces++; // Including the depot
 
         getline(file, line);
         int numberOfRoads = std::stoi(line);
-
         std::map<Place, std::map<Place, Cost>> roads;
 
-        for (int roadId = 0; roadId < numberOfRoads; ++roadId)
-        {
+        for (int roadId = 0; roadId < numberOfRoads; ++roadId) {
             getline(file, line);
             std::istringstream iss(line);
-            Place source;
-            Place destination;
+            Place source, destination;
             Cost cost;
-
             iss >> source >> destination >> cost;
             roads[source][destination] = cost;
         }
 
         Load vehicleCapacity = 20;
-        int maxNumberOfPlacesPerRoute = 2;
+        int maxNumberOfPlacesPerRoute = 3;
 
         CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
             numberOfPlaces,
@@ -292,14 +292,16 @@ int main(int argc, char *argv[])
 
         CVRP.solve();
 
-        if (world_rank == 0)
-        {
-            Route bestRoute = CVRP.bestRoute;
+        if (world_rank == 0) {
+            auto end = std::chrono::high_resolution_clock::now(); // End time measurement
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(); // Calculate duration in milliseconds
 
+            Route bestRoute = CVRP.bestRoute;
             std::cout << "Running solution for " << fileNames[j] << std::endl;
             std::cout << "Best route Place sequence: ";
             for (Place& place : bestRoute.places) std::cout << place << " -> ";
             std::cout << std::endl << "Best route cost: " << bestRoute.cost << std::endl;
+            std::cout << "Time taken: " << duration << " ms" << std::endl;
             std::cout << "--------------------------------------------------------" << std::endl;
         }
     }

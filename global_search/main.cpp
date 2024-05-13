@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <chrono>
 
 using Place = int;
 using Load = int;
@@ -125,18 +126,26 @@ class CapacitatedVehicleRoutingProblem
 int main()
 {
     std::vector<std::string> fileNames = {
-        "../graphs/graph0.txt",
-        "../graphs/graph1.txt",
-        "../graphs/graph2.txt",
-        "../graphs/graph3.txt",
+        "../graphs/graph8_25.txt",
+        "../graphs/graph8_50.txt",
+        "../graphs/graph8_75.txt",
+        "../graphs/graph9_50.txt",
+        "../graphs/graph10_50.txt",
+        "../graphs/graph11_50.txt",
+        "../graphs/graph12_25.txt",
+        "../graphs/graph12_50.txt",
+        "../graphs/graph12_75.txt",
     };
 
     for (int j = 0; j < fileNames.size(); ++j)
     {
+        auto startTime = std::chrono::high_resolution_clock::now();
+
         std::ifstream file(fileNames[j]);
         if (!file.is_open())
         {
-            std::cerr << "Erro na abertura do arquivo ..." << std::endl;
+            std::cerr << "Error opening file: " << fileNames[j] << std::endl;
+            continue;
         }
 
         std::string line;
@@ -144,7 +153,7 @@ int main()
         int numberOfPlaces = std::stoi(line);
 
         std::map<Place, Load> placesDemand;
-        placesDemand[0] = 0;
+        placesDemand[0] = 0; // Consider place 0
 
         for (int i = 0; i < numberOfPlaces; ++i)
         {
@@ -152,16 +161,14 @@ int main()
             std::istringstream iss(line);
             int place;
             Load demand;
-
             iss >> place >> demand;
             placesDemand[place] = demand;
         }
 
-        numberOfPlaces++; // To consider place 0
+        numberOfPlaces++; // Increment to consider place 0
 
         getline(file, line);
         int numberOfRoads = std::stoi(line);
-
         std::map<Place, std::map<Place, Cost>> roads;
 
         for (int roadId = 0; roadId < numberOfRoads; ++roadId)
@@ -171,15 +178,14 @@ int main()
             Place source;
             Place destination;
             Cost cost;
-
             iss >> source >> destination >> cost;
             roads[source][destination] = cost;
         }
 
         Load vehicleCapacity = 20;
-        int maxNumberOfPlacesPerRoute = 2;
+        int maxNumberOfPlacesPerRoute = 3;
 
-        CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
+        CapacitatedVehicleRoutingProblem CVRP(
             numberOfPlaces,
             vehicleCapacity,
             maxNumberOfPlacesPerRoute,
@@ -191,10 +197,15 @@ int main()
 
         Route bestRoute = CVRP.bestRoute;
 
+        auto endTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
         std::cout << "Running solution for " << fileNames[j] << std::endl;
         std::cout << "Best route Place sequence: ";
         for (Place& place : bestRoute.places) std::cout << place << " -> ";
-        std::cout << std::endl << "Best route cost: " << bestRoute.cost << std::endl;
+        std::cout << std::endl;
+        std::cout << "Best route cost: " << bestRoute.cost << std::endl;
+        std::cout << "Time taken: " << duration << " milliseconds." << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
 }

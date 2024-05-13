@@ -9,6 +9,7 @@
 #include <random>
 #include <omp.h>
 #include <mpi.h>
+#include <chrono>
 
 using Place = int;
 using Load = int;
@@ -195,29 +196,38 @@ private:
     }
 };
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
     int world_size, world_rank;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-    if (world_rank == 0)
+    if (world_rank == 0) {
         std::cout << "Running solution with " << world_size << " processes" << std::endl;
+    }
 
     std::vector<std::string> fileNames = {
-        "../graphs/graph0.txt",
-        "../graphs/graph1.txt",
-        "../graphs/graph2.txt",
-        "../graphs/graph3.txt"};
+        "../graphs/graph8_25.txt",
+        "../graphs/graph8_50.txt",
+        "../graphs/graph8_75.txt",
+        "../graphs/graph9_50.txt",
+        "../graphs/graph10_50.txt",
+        "../graphs/graph11_50.txt",
+        "../graphs/graph12_25.txt",
+        "../graphs/graph12_50.txt",
+        "../graphs/graph12_75.txt",
+    };
 
-    for (int j = 0; j < 4; ++j)
-    {
+    for (int j = 0; j < 4; ++j) {
+        auto startTime = std::chrono::high_resolution_clock::now();
+
         std::ifstream file(fileNames[j]);
-        if (!file.is_open())
-        {
-            std::cerr << "Erro na abertura do arquivo ..." << std::endl;
+        if (!file.is_open()) {
+            if (world_rank == 0) {
+                std::cerr << "Error opening file: " << fileNames[j] << std::endl;
+            }
+            continue; // Skip this iteration if the file cannot be opened
         }
 
         std::string line;
@@ -225,40 +235,34 @@ int main(int argc, char *argv[])
         int numberOfPlaces = std::stoi(line);
 
         std::map<Place, Load> placesDemand;
-        placesDemand[0] = 0;
+        placesDemand[0] = 0; // Assuming place 0 as the depot
 
-        for (int i = 0; i < numberOfPlaces; ++i)
-        {
+        for (int i = 0; i < numberOfPlaces; ++i) {
             getline(file, line);
             std::istringstream iss(line);
             int place;
             Load demand;
-
             iss >> place >> demand;
             placesDemand[place] = demand;
         }
 
-        numberOfPlaces++; // To consider place 0
+        numberOfPlaces++; // To consider the depot
 
         getline(file, line);
         int numberOfRoads = std::stoi(line);
-
         std::map<Place, std::map<Place, Cost>> roads;
 
-        for (int roadId = 0; roadId < numberOfRoads; ++roadId)
-        {
+        for (int roadId = 0; roadId < numberOfRoads; ++roadId) {
             getline(file, line);
             std::istringstream iss(line);
-            Place source;
-            Place destination;
+            Place source, destination;
             Cost cost;
-
             iss >> source >> destination >> cost;
             roads[source][destination] = cost;
         }
 
-        Load vehicleCapacity = 10;
-        int maxNumberOfPlacesPerRoute = 4;
+        Load vehicleCapacity = 20;
+        int maxNumberOfPlacesPerRoute = 3;
 
         CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
             numberOfPlaces,
@@ -272,19 +276,24 @@ int main(int argc, char *argv[])
 
         CVRP.solve();
 
-        if (world_rank == 0)
-        {
+        auto endTime = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+        if (world_rank == 0) {
             Route bestRoute = CVRP.bestRoute;
             Cost lowerCost = CVRP.lowerCost;
 
             std::cout << "Running solution for " << fileNames[j] << std::endl;
             std::cout << "Best route Place sequence: ";
-            for (Place &place : bestRoute)
+            for (Place &place : bestRoute) {
                 std::cout << place << " -> ";
-            std::cout << std::endl
-                    << "Best route cost: " << lowerCost << std::endl;
+            }
+            std::cout << std::endl << "Best route cost: " << lowerCost << std::endl;
+            std::cout << "Time taken: " << duration.count() << " ms" << std::endl;
             std::cout << "--------------------------------------------------------" << std::endl;
         }
     }
+
     MPI_Finalize();
+    return 0;
 }
