@@ -137,15 +137,13 @@ class CapacitatedVehicleRoutingProblem
 
 int main() {
     std::vector<std::string> fileNames = {
-        "../graphs/graph8_25.txt",
+        "../graphs/graph4_50.txt",
+        "../graphs/graph5_50.txt",
+        "../graphs/graph6_50.txt",
+        "../graphs/graph7_50.txt",
         "../graphs/graph8_50.txt",
-        "../graphs/graph8_75.txt",
         "../graphs/graph9_50.txt",
         "../graphs/graph10_50.txt",
-        "../graphs/graph11_50.txt",
-        "../graphs/graph12_25.txt",
-        "../graphs/graph12_50.txt",
-        "../graphs/graph12_75.txt",
     };
 
     for (int j = 0; j < fileNames.size(); ++j) {
