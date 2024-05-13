@@ -104,7 +104,7 @@ class CapacitatedVehicleRoutingProblem
                 cheaperRoad = road;
         }
 
-        if (uniformRealDistr(gen) > 0.7)
+        if (uniformRealDistr(gen) > 0.5)
         {
             std::vector<Place> availablePlaces;
             for (const auto& road : availableRoads)
