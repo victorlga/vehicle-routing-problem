@@ -7,7 +7,7 @@ CXX = mpic++
 CXXFLAGS = -O3 -fopenmp
 
 # Target executable name
-TARGET = main
+TARGET = CVRP_Solver
 
 # Source files
 SOURCES = main.cpp
