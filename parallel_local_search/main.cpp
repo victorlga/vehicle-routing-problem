@@ -8,6 +8,7 @@
 #include <string>
 #include <random>
 #include <omp.h>
+#include <mpi.h>
 
 using Place = int;
 using Load = int;
@@ -25,47 +26,83 @@ struct Road
 
 class CapacitatedVehicleRoutingProblem
 {
-    public:
+public:
     Route bestRoute;
     Cost lowerCost = INT_MAX;
+    int world_rank;
+    int world_size;
 
     CapacitatedVehicleRoutingProblem(
         int numberOfPlaces,
         int vehicleCapacity,
         int maxNumberOfPlacesPerRoute,
         std::map<Place, Load> placesDemand,
-        std::map<Place, std::map<Place, Cost>> roads
-    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), placesDemand(placesDemand), roads(roads) {}
+        std::map<Place, std::map<Place, Cost>> roads,
+        int world_rank,
+        int world_size) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity),
+                          maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), placesDemand(placesDemand),
+                          roads(roads), world_rank(world_rank), world_size(world_size) {}
 
     void solve()
     {
-        #pragma omp parallel private()
+        int iterations = 10000;                                                           // Total number of iterations
+        int local_iterations = iterations / world_size;                                   // Divide iterations among MPI processes
+        int start = local_iterations * world_rank;                                        // Starting index for each process
+        int end = (world_rank == world_size - 1) ? iterations : start + local_iterations; // End index, adjust for the last process
+
+        Route localBestRoute;
+        Cost localLowerCost = INT_MAX;
+
+        #pragma omp parallel
         {
-            Route localBestRoute;
-            Cost localLowerCost = INT_MAX;
-            #pragma omp for
-            for (int i = 0; i < 10000; ++i)
+            Route threadBestRoute;
+            Cost threadLowerCost = INT_MAX;
+
+            #pragma omp for nowait
+            for (int i = start; i < end; ++i)
             {
                 std::pair<Route, Cost> result = generateRouteAndCost();
-                if (result.second < lowerCost)
+                if (result.second < threadLowerCost)
                 {
-                    localBestRoute = result.first;
-                    localLowerCost = result.second;
+                    threadBestRoute = result.first;
+                    threadLowerCost = result.second;
                 }
             }
 
             #pragma omp critical
             {
-                if (localLowerCost < lowerCost)
+                if (threadLowerCost < localLowerCost)
                 {
-                    bestRoute = localBestRoute;
-                    lowerCost = localLowerCost;
+                    localBestRoute = threadBestRoute;
+                    localLowerCost = threadLowerCost;
                 }
             }
         }
+
+        // Use MPI_Reduce to find the global best route and cost
+        struct {
+            Cost cost;
+            int rank;
+        } localResult = {localLowerCost, world_rank}, globalResult;
+
+        MPI_Reduce(&localResult, &globalResult, 1, MPI_2INT, MPI_MINLOC, 0, MPI_COMM_WORLD);
+
+        if (world_rank == 0)
+        {
+            if (globalResult.rank == 0) {
+                bestRoute = localBestRoute;
+            } else {
+                MPI_Recv(bestRoute.data(), bestRoute.size(), MPI_INT, globalResult.rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+        } else {
+            if (world_rank == globalResult.rank) {
+                MPI_Send(localBestRoute.data(), localBestRoute.size(), MPI_INT, 0, 0, MPI_COMM_WORLD);
+            }
+        }
+
     }
 
-    private:
+private:
     int numberOfPlaces;
     int vehicleCapacity;
     int maxNumberOfPlacesPerRoute;
@@ -104,7 +141,7 @@ class CapacitatedVehicleRoutingProblem
         return std::pair<Route, Cost>(route, cost);
     }
 
-    std::pair<Place, Cost> findCheaperValidRoad(std::map<Place, Cost> availableRoads, int& numberOfPlacesVisited, Load& vehicleLoad, std::set<Place>& placesVisited, Place previousPlace)
+    std::pair<Place, Cost> findCheaperValidRoad(std::map<Place, Cost> availableRoads, int &numberOfPlacesVisited, Load &vehicleLoad, std::set<Place> &placesVisited, Place previousPlace)
     {
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -113,17 +150,17 @@ class CapacitatedVehicleRoutingProblem
 
         std::pair<Place, Cost> cheaperRoad(INT_MAX, INT_MAX);
 
-        for (auto const& road : availableRoads)
+        for (auto const &road : availableRoads)
         {
             bool newPlaceOrStart = (placesVisited.find(road.first) == placesVisited.end() || road.first == 0);
             if (road.second < cheaperRoad.second && newPlaceOrStart && road.first != previousPlace)
                 cheaperRoad = road;
         }
 
-        if (uniformRealDistr(gen) > 0.7)
+        if (uniformRealDistr(gen) > 0.5)
         {
             std::vector<Place> availablePlaces;
-            for (const auto& road : availableRoads)
+            for (const auto &road : availableRoads)
                 availablePlaces.push_back(road.first);
 
             int randomPlaceIndex = uniformIntDistr(gen) % availableRoads.size();
@@ -147,17 +184,15 @@ class CapacitatedVehicleRoutingProblem
 
         return cheaperRoad;
     }
-
 };
 
-int main()
+int main(int argc, char* argv[])
 {
     std::vector<std::string> fileNames = {
         "../graphs/graph0.txt",
         "../graphs/graph1.txt",
         "../graphs/graph2.txt",
-        "../graphs/graph3.txt"
-    };
+        "../graphs/graph3.txt"};
 
     for (int j = 0; j < 4; ++j)
     {
@@ -207,23 +242,35 @@ int main()
         Load vehicleCapacity = 10;
         int maxNumberOfPlacesPerRoute = 4;
 
+        MPI_Init(&argc, &argv);
+
+        int world_size, world_rank;
+        MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+        MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
         CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
             numberOfPlaces,
             vehicleCapacity,
             maxNumberOfPlacesPerRoute,
             placesDemand,
-            roads
+            roads,
+            world_rank,
+            world_size
         );
 
         CVRP.solve();
+
+        MPI_Finalize();
 
         Route bestRoute = CVRP.bestRoute;
         Cost lowerCost = CVRP.lowerCost;
 
         std::cout << "Running solution for " << fileNames[j] << std::endl;
         std::cout << "Best route Place sequence: ";
-        for (Place& place : bestRoute) std::cout << place << " -> ";
-        std::cout << std::endl << "Best route cost: " << lowerCost << std::endl;
+        for (Place &place : bestRoute)
+            std::cout << place << " -> ";
+        std::cout << std::endl
+                  << "Best route cost: " << lowerCost << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
 }
