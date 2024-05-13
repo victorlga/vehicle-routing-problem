@@ -39,9 +39,10 @@ public:
         std::map<Place, Load> placesDemand,
         std::map<Place, std::map<Place, Cost>> roads,
         int world_rank,
-        int world_size) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity),
-                          maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), placesDemand(placesDemand),
-                          roads(roads), world_rank(world_rank), world_size(world_size) {}
+        int world_size
+        ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity),
+            maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), placesDemand(placesDemand),
+            roads(roads), world_rank(world_rank), world_size(world_size) {}
 
     void solve()
     {
@@ -80,7 +81,8 @@ public:
         }
 
         // Use MPI_Reduce to find the global best route and cost
-        struct {
+        struct
+        {
             Cost cost;
             int rank;
         } localResult = {localLowerCost, world_rank}, globalResult;
@@ -89,17 +91,24 @@ public:
 
         if (world_rank == 0)
         {
-            if (globalResult.rank == 0) {
+            if (globalResult.rank == 0)
+            {
                 bestRoute = localBestRoute;
-            } else {
-                MPI_Recv(bestRoute.data(), bestRoute.size(), MPI_INT, globalResult.rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                lowerCost = localLowerCost;
             }
-        } else {
-            if (world_rank == globalResult.rank) {
+            else
+            {
+                MPI_Recv(bestRoute.data(), bestRoute.size(), MPI_INT, globalResult.rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                lowerCost = globalResult.cost;
+            }
+        }
+        else
+        {
+            if (world_rank == globalResult.rank)
+            {
                 MPI_Send(localBestRoute.data(), localBestRoute.size(), MPI_INT, 0, 0, MPI_COMM_WORLD);
             }
         }
-
     }
 
 private:
@@ -186,8 +195,17 @@ private:
     }
 };
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
+    MPI_Init(&argc, &argv);
+
+    int world_size, world_rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    if (world_rank == 0)
+        std::cout << "Running solution with " << world_size << " processes" << std::endl;
+
     std::vector<std::string> fileNames = {
         "../graphs/graph0.txt",
         "../graphs/graph1.txt",
@@ -242,12 +260,6 @@ int main(int argc, char* argv[])
         Load vehicleCapacity = 10;
         int maxNumberOfPlacesPerRoute = 4;
 
-        MPI_Init(&argc, &argv);
-
-        int world_size, world_rank;
-        MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-        MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-
         CapacitatedVehicleRoutingProblem CVRP = CapacitatedVehicleRoutingProblem(
             numberOfPlaces,
             vehicleCapacity,
@@ -260,17 +272,19 @@ int main(int argc, char* argv[])
 
         CVRP.solve();
 
-        MPI_Finalize();
+        if (world_rank == 0)
+        {
+            Route bestRoute = CVRP.bestRoute;
+            Cost lowerCost = CVRP.lowerCost;
 
-        Route bestRoute = CVRP.bestRoute;
-        Cost lowerCost = CVRP.lowerCost;
-
-        std::cout << "Running solution for " << fileNames[j] << std::endl;
-        std::cout << "Best route Place sequence: ";
-        for (Place &place : bestRoute)
-            std::cout << place << " -> ";
-        std::cout << std::endl
-                  << "Best route cost: " << lowerCost << std::endl;
-        std::cout << "--------------------------------------------------------" << std::endl;
+            std::cout << "Running solution for " << fileNames[j] << std::endl;
+            std::cout << "Best route Place sequence: ";
+            for (Place &place : bestRoute)
+                std::cout << place << " -> ";
+            std::cout << std::endl
+                    << "Best route cost: " << lowerCost << std::endl;
+            std::cout << "--------------------------------------------------------" << std::endl;
+        }
     }
+    MPI_Finalize();
 }
