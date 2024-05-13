@@ -1,16 +1,35 @@
-Running solution for ../graphs/graph0.txt
-Best route Place sequence: 0 -> 2 -> 0 -> 3 -> 0 -> 4 -> 0 -> 1 -> 0 -> 
-Best route cost: 378
+Running solution for ../graphs/graph4_50.txt
+Best route Place sequence: 0 -> 3 -> 0 -> 4 -> 0 -> 2 -> 0 -> 1 -> 0 -> 
+Best route cost: 326
+Time taken: 444 ms
 --------------------------------------------------------
-Running solution for ../graphs/graph1.txt
-Best route Place sequence: 0 -> 2 -> 4 -> 0 -> 1 -> 3 -> 0 -> 
-Best route cost: 230
+Running solution for ../graphs/graph5_50.txt
+Best route Place sequence: 0 -> 2 -> 5 -> 0 -> 3 -> 4 -> 0 -> 1 -> 0 -> 
+Best route cost: 281
+Time taken: 525 ms
 --------------------------------------------------------
-Running solution for ../graphs/graph2.txt
-Best route Place sequence: 0 -> 8 -> 0 -> 2 -> 0 -> 6 -> 0 -> 7 -> 0 -> 1 -> 0 -> 5 -> 0 -> 4 -> 0 -> 3 -> 0 -> 
-Best route cost: 1146
+Running solution for ../graphs/graph6_50.txt
+Best route Place sequence: 0 -> 5 -> 6 -> 0 -> 1 -> 4 -> 0 -> 3 -> 0 -> 2 -> 0 -> 
+Best route cost: 369
+Time taken: 644 ms
 --------------------------------------------------------
-Running solution for ../graphs/graph3.txt
-Best route Place sequence: 0 -> 6 -> 0 -> 8 -> 0 -> 7 -> 0 -> 2 -> 3 -> 5 -> 0 -> 1 -> 0 -> 4 -> 0 -> 
-Best route cost: 627
+Running solution for ../graphs/graph7_50.txt
+Best route Place sequence: 0 -> 4 -> 7 -> 0 -> 5 -> 0 -> 3 -> 0 -> 1 -> 6 -> 0 -> 2 -> 0 -> 
+Best route cost: 430
+Time taken: 741 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph8_50.txt
+Best route Place sequence: 0 -> 4 -> 6 -> 0 -> 2 -> 8 -> 0 -> 5 -> 0 -> 1 -> 3 -> 7 -> 0 -> 
+Best route cost: 540
+Time taken: 899 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph9_50.txt
+Best route Place sequence: 0 -> 4 -> 6 -> 0 -> 1 -> 5 -> 9 -> 0 -> 2 -> 0 -> 3 -> 7 -> 8 -> 0 -> 
+Best route cost: 571
+Time taken: 1033 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph10_50.txt
+Best route Place sequence: 0 -> 10 -> 0 -> 6 -> 0 -> 3 -> 7 -> 0 -> 4 -> 0 -> 1 -> 8 -> 0 -> 2 -> 0 -> 5 -> 0 -> 9 -> 0 -> 
+Best route cost: 526
+Time taken: 1288 ms
 --------------------------------------------------------
