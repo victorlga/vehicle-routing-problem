@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <omp.h>
+#include <mpi.h>
 
 using Place = int;
 using Load = int;
@@ -39,8 +40,11 @@ class CapacitatedVehicleRoutingProblem
         int vehicleCapacity,
         int maxNumberOfPlacesPerRoute,
         std::map<Place, std::map<Place, Cost>> roads,
-        std::map<Place, Load>& placesDemand
-    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), roads(roads), placesDemand(placesDemand) {}
+        std::map<Place, Load>& placesDemand,
+        int world_rank,
+        int world_size
+    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute),
+        roads(roads), placesDemand(placesDemand), world_rank(world_rank), world_size(world_size) {}
 
     void solve()
     {
@@ -70,6 +74,8 @@ class CapacitatedVehicleRoutingProblem
     std::map<Place, std::map<Place, Cost>> roads;
     std::vector<Route> routes;
     std::map<Place, Load>& placesDemand;
+    int world_rank;
+    int world_size;
 
     void generateAllRouteCombinationsWithRestrictions(
         std::set<Place> placesVisited,
@@ -103,40 +109,122 @@ class CapacitatedVehicleRoutingProblem
                     continue;
             }
 
-            route.cost += roads[previousPlace][currentPlace];
-            placesVisited.insert(currentPlace);
-            route.places.push_back(currentPlace);
-
-            if (currentPlace == 0)
+            if (world_rank % numberOfPlaces == currentPlace && placesVisited.size() == 1)
             {
-                if (placesVisited.size() == numberOfPlaces)
-                {
-                    #pragma omp critical
-                    routes.push_back(route);
-                }
-                #pragma omp task
-                generateAllRouteCombinationsWithRestrictions(placesVisited, 0, currentPlace, 0, route);
+                recursiveCall(placesVisited, numberOfPlacesVisited, previousPlace, vehicleLoad, route, currentPlace, placeDemand);
             } else {
-                #pragma omp task
-                generateAllRouteCombinationsWithRestrictions(
-                    placesVisited,
-                    numberOfPlacesVisited+1,
-                    currentPlace,
-                    vehicleLoad+placeDemand.second,
-                    route
-                );
+                recursiveCall(placesVisited, numberOfPlacesVisited, previousPlace, vehicleLoad, route, currentPlace, placeDemand);
+            }
+        }
+    }
+
+    void recursiveCall(
+        std::set<Place> placesVisited,
+        int numberOfPlacesVisited,
+        Place previousPlace,
+        Load vehicleLoad,
+        Route route,
+        Place currentPlace,
+        std::pair<Place, Load> placeDemand
+    )
+    {
+        route.cost += roads[previousPlace][currentPlace];
+        placesVisited.insert(currentPlace);
+        route.places.push_back(currentPlace);
+
+        if (currentPlace == 0)
+        {
+            if (placesVisited.size() == numberOfPlaces)
+            {
+                #pragma omp critical
+                routes.push_back(route);
+                if (world_rank == 0)
+                {
+                    for (int i = 1; i < world_size; ++i)
+                    {
+                        int routesSize;
+                        MPI_Recv(&routesSize, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        std::vector<int> buffer(routesSize);
+                        MPI_Recv(buffer.data(), routesSize, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                        auto deserializedRoutes = deserialize(buffer);
+                        routes.insert(routes.end(), deserializedRoutes.begin(), deserializedRoutes.end());
+                    }
+                } else {
+                    std::vector<int> flatRoutes = serialize(routes);
+                    int routesSize = flatRoutes.size();
+                    MPI_Send(&routesSize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                    MPI_Send(flatRoutes.data(), routesSize, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                }
+                return;
             }
 
-            route.places.pop_back();
-            placesVisited.extract(currentPlace);
-            route.cost -= roads[previousPlace][currentPlace];
+            #pragma omp task
+            generateAllRouteCombinationsWithRestrictions(placesVisited, 0, currentPlace, 0, route);
+        } else {
+            #pragma omp task
+            generateAllRouteCombinationsWithRestrictions(
+                placesVisited,
+                numberOfPlacesVisited+1,
+                currentPlace,
+                vehicleLoad+placeDemand.second,
+                route
+            );
         }
+
+        route.places.pop_back();
+        placesVisited.extract(currentPlace);
+        route.cost -= roads[previousPlace][currentPlace];
+    }
+
+    std::vector<int> serialize(std::vector<Route> routes)
+    {
+        std::vector<int> flatRoutes;
+        for (Route& route : routes)
+        {
+            flatRoutes.push_back(route.cost);
+            for (Place& place : route.places)
+            {
+                flatRoutes.push_back(place);
+            }
+            flatRoutes.push_back(-1);
+        }
+        return flatRoutes;
+    }
+
+    std::vector<Route> deserialize(std::vector<int> flatRoutes)
+    {
+        std::vector<Route> routes;
+        int i = 0;
+        while (i < flatRoutes.size())
+        {
+            Cost cost = flatRoutes[i];
+            i++;
+            std::vector<Place> places;
+            while (flatRoutes[i] != -1)
+            {
+                places.push_back(flatRoutes[i]);
+                i++;
+            }
+            i++;
+            routes.push_back(Route(places, cost));
+        }
+        return routes;
     }
 };
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    MPI_Init(&argc, &argv);
+
+    int world_size, world_rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    if (world_rank == 0)
+        std::cout << "Running solution with " << world_size << " processes" << std::endl;
+
     std::vector<std::string> fileNames = {
         "../graphs/graph0.txt",
         "../graphs/graph1.txt",
@@ -197,17 +285,24 @@ int main()
             vehicleCapacity,
             maxNumberOfPlacesPerRoute,
             roads,
-            placesDemand
+            placesDemand,
+            world_rank,
+            world_size
         );
 
         CVRP.solve();
 
-        Route bestRoute = CVRP.bestRoute;
+        if (world_rank == 0)
+        {
+            Route bestRoute = CVRP.bestRoute;
 
-        std::cout << "Running solution for " << fileNames[j] << std::endl;
-        std::cout << "Best route Place sequence: ";
-        for (Place& place : bestRoute.places) std::cout << place << " -> ";
-        std::cout << std::endl << "Best route cost: " << bestRoute.cost << std::endl;
-        std::cout << "--------------------------------------------------------" << std::endl;
+            std::cout << "Running solution for " << fileNames[j] << std::endl;
+            std::cout << "Best route Place sequence: ";
+            for (Place& place : bestRoute.places) std::cout << place << " -> ";
+            std::cout << std::endl << "Best route cost: " << bestRoute.cost << std::endl;
+            std::cout << "--------------------------------------------------------" << std::endl;
+        }
     }
+
+    MPI_Finalize();
 }
