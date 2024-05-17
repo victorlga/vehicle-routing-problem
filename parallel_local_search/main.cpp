@@ -47,10 +47,10 @@ public:
 
     void solve()
     {
-        int iterations = 10000;                                                           // Total number of iterations
-        int local_iterations = iterations / world_size;                                   // Divide iterations among MPI processes
-        int start = local_iterations * world_rank;                                        // Starting index for each process
-        int end = (world_rank == world_size - 1) ? iterations : start + local_iterations; // End index, adjust for the last process
+        int iterations = 10000;
+        int local_iterations = iterations / world_size;
+        int start = local_iterations * world_rank;
+        int end = (world_rank == world_size - 1) ? iterations : start + local_iterations;
 
         Route localBestRoute;
         Cost localLowerCost = INT_MAX;
@@ -81,35 +81,43 @@ public:
             }
         }
 
-        // Use MPI_Reduce to find the global best route and cost
-        struct
-        {
-            Cost cost;
-            int rank;
-        } localResult = {localLowerCost, world_rank}, globalResult;
+        if (world_rank == 0) {
+            // Process 0 gathers and determines the global best route and cost
+            std::vector<Route> allRoutes(world_size);
+            std::vector<Cost> allCosts(world_size);
+            allRoutes[0] = localBestRoute;
+            allCosts[0] = localLowerCost;
 
-        MPI_Reduce(&localResult, &globalResult, 1, MPI_2INT, MPI_MINLOC, 0, MPI_COMM_WORLD);
+            for (int source = 1; source < world_size; source++)
+            {
+                int routeSize;
+                MPI_Recv(&routeSize, 1, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                Route receivedRoute(routeSize);
+                MPI_Recv(receivedRoute.data(), routeSize, MPI_INT, source, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&allCosts[source], 1, MPI_INT, source, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                allRoutes[source] = std::move(receivedRoute);
+            }
 
-        if (world_rank == 0)
-        {
-            if (globalResult.rank == 0)
+            for (int i = 0; i < world_size; ++i)
             {
-                bestRoute = localBestRoute;
-                lowerCost = localLowerCost;
+                // Check if allCosts < lowerCost
+                if (allCosts[i] < lowerCost)
+                {
+                    lowerCost = allCosts[i];
+                    bestRoute = allRoutes[i];
+                }
             }
-            else
-            {
-                MPI_Recv(bestRoute.data(), bestRoute.size(), MPI_INT, globalResult.rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                lowerCost = globalResult.cost;
-            }
+
+        } else {
+            // Send the size of the route first
+            int routeSize = localBestRoute.size();
+            MPI_Send(&routeSize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            // Then send the route data
+            MPI_Send(localBestRoute.data(), localBestRoute.size(), MPI_INT, 0, 0, MPI_COMM_WORLD);
+            // And finally, send the cost
+            MPI_Send(&localLowerCost, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
         }
-        else
-        {
-            if (world_rank == globalResult.rank)
-            {
-                MPI_Send(localBestRoute.data(), localBestRoute.size(), MPI_INT, 0, 0, MPI_COMM_WORLD);
-            }
-        }
+
     }
 
 private:
@@ -217,15 +225,12 @@ int main(int argc, char *argv[]) {
         "../graphs/graph10_50.txt",
     };
 
-    for (int j = 0; j < 4; ++j) {
+    for (int j = 0; j < fileNames.size(); ++j) {
         auto startTime = std::chrono::high_resolution_clock::now();
 
         std::ifstream file(fileNames[j]);
         if (!file.is_open()) {
-            if (world_rank == 0) {
-                std::cerr << "Error opening file: " << fileNames[j] << std::endl;
-            }
-            continue; // Skip this iteration if the file cannot be opened
+            std::cerr << "Error opening file: " << fileNames[j] << std::endl;
         }
 
         std::string line;
@@ -271,7 +276,6 @@ int main(int argc, char *argv[]) {
             world_rank,
             world_size
         );
-
         CVRP.solve();
 
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -293,5 +297,6 @@ int main(int argc, char *argv[]) {
     }
 
     MPI_Finalize();
+
     return 0;
 }

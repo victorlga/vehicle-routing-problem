@@ -1,0 +1,36 @@
+Running solution with 1 processes
+Running solution for ../graphs/graph4_50.txt
+Best route Place sequence: 0 -> 3 -> 0 -> 4 -> 0 -> 2 -> 0 -> 1 -> 0 -> 
+Best route cost: 326
+Time taken: 56 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph5_50.txt
+Best route Place sequence: 0 -> 3 -> 4 -> 0 -> 2 -> 5 -> 0 -> 1 -> 0 -> 
+Best route cost: 281
+Time taken: 40 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph6_50.txt
+Best route Place sequence: 0 -> 1 -> 4 -> 0 -> 2 -> 0 -> 5 -> 6 -> 0 -> 3 -> 0 -> 
+Best route cost: 369
+Time taken: 49 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph7_50.txt
+Best route Place sequence: 0 -> 3 -> 0 -> 5 -> 0 -> 1 -> 6 -> 0 -> 2 -> 0 -> 4 -> 7 -> 0 -> 
+Best route cost: 430
+Time taken: 60 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph8_50.txt
+Best route Place sequence: 0 -> 1 -> 3 -> 5 -> 0 -> 4 -> 6 -> 0 -> 8 -> 0 -> 2 -> 7 -> 0 -> 
+Best route cost: 574
+Time taken: 68 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph9_50.txt
+Best route Place sequence: 0 -> 4 -> 6 -> 0 -> 3 -> 7 -> 8 -> 0 -> 2 -> 0 -> 1 -> 5 -> 9 -> 0 -> 
+Best route cost: 571
+Time taken: 77 ms
+--------------------------------------------------------
+Running solution for ../graphs/graph10_50.txt
+Best route Place sequence: 0 -> 9 -> 0 -> 10 -> 0 -> 6 -> 0 -> 4 -> 0 -> 1 -> 8 -> 0 -> 3 -> 7 -> 0 -> 2 -> 0 -> 5 -> 0 -> 
+Best route cost: 526
+Time taken: 100 ms
+--------------------------------------------------------
