@@ -4,7 +4,7 @@
 CXX = mpic++
 
 # Compiler flags
-CXXFLAGS = -O3 -fopenmp
+CXXFLAGS = -O3 -fopenmp -std=c++17
 
 # Target executable name
 TARGET = CVRP_Solver
