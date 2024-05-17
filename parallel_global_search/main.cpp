@@ -95,9 +95,6 @@ class CapacitatedVehicleRoutingProblem
         {
             Place currentPlace = placeDemand.first;
 
-            if (world_rank >= numberOfPlaces)
-                continue;
-
             // Filter repeated places
             if (currentPlace == previousPlace)
                 continue;
@@ -121,12 +118,8 @@ class CapacitatedVehicleRoutingProblem
             
 
             // Filter route sections that are not part of the current process
-            if (route.places.size() > 1 && route.places[1] != world_rank)
+            if (route.places.size() == 1 && route.places[1] % 2 != (world_rank + 1))
                 continue;
-            else {
-                #pragma omp critical
-                std::cout << route.places[1] << ' ' << world_rank << std::endl;
-            }
             
 
             route.cost += roads[previousPlace][currentPlace];
