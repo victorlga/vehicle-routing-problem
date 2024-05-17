@@ -118,11 +118,16 @@ class CapacitatedVehicleRoutingProblem
                     continue;
             }
 
+            
+
             // Filter route sections that are not part of the current process
             if (route.places.size() > 1 && route.places[1] != world_rank)
                 continue;
-            else
+            else {
+                #pragma omp critical
                 std::cout << route.places[1] << ' ' << world_rank << std::endl;
+            }
+            
 
             route.cost += roads[previousPlace][currentPlace];
             placesVisited.insert(currentPlace);
