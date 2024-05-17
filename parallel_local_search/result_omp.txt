@@ -1,4 +1,3 @@
-Running solution with 1 processes
 Running solution for ../graphs/graph4_50.txt
 Best route Place sequence: 0 -> 3 -> 0 -> 4 -> 0 -> 2 -> 0 -> 1 -> 0 -> 
 Best route cost: 326
