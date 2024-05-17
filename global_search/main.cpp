@@ -203,7 +203,7 @@ int main()
         for (Place& place : bestRoute.places) std::cout << place << " -> ";
         std::cout << std::endl;
         std::cout << "Best route cost: " << bestRoute.cost << std::endl;
-        std::cout << "Time taken: " << duration << " milliseconds." << std::endl;
+        std::cout << "Time taken: " << duration << " ms" << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
 }
