@@ -103,7 +103,10 @@ class CapacitatedVehicleRoutingProblem
             if (currentPlace == 0)
             {
                 if (placesVisited.size() == numberOfPlaces)
+                {
                     routes.push_back(route);
+                    return;
+                }
                 generateAllRouteCombinationsWithRestrictions(placesVisited, 0, currentPlace, 0, route);
             } else {
                 generateAllRouteCombinationsWithRestrictions(

@@ -95,6 +95,9 @@ class CapacitatedVehicleRoutingProblem
         {
             Place currentPlace = placeDemand.first;
 
+            if (world_rank >= numberOfPlaces)
+                continue;
+
             // Filter repeated places
             if (currentPlace == previousPlace)
                 continue;
@@ -115,13 +118,11 @@ class CapacitatedVehicleRoutingProblem
                     continue;
             }
 
-
             // Filter route sections that are not part of the current process
-            if (placesVisited.size() == 1)
-            {
-                if (world_rank % numberOfPlaces == currentPlace)
-                    continue;
-            }
+            if (route.places.size() > 1 && route.places[1] != world_rank)
+                continue;
+            else
+                std::cout << route.places[1] << ' ' << world_rank << std::endl;
 
             route.cost += roads[previousPlace][currentPlace];
             placesVisited.insert(currentPlace);
@@ -133,6 +134,7 @@ class CapacitatedVehicleRoutingProblem
                 {
                     #pragma omp critical
                     routes.push_back(route);
+                    return;
                 }
                 #pragma omp task
                 generateAllRouteCombinationsWithRestrictions(placesVisited, 0, currentPlace, 0, route);
@@ -237,14 +239,17 @@ int main(int argc, char *argv[])
 
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-
-        std::cout << "Running solution for " << fileNames[j] << std::endl;
-        std::cout << "Best route Place sequence: ";
-        for (Place& place : bestRoute.places) std::cout << place << " -> ";
-        std::cout << std::endl;
-        std::cout << "Best route cost: " << bestRoute.cost << std::endl;
-        std::cout << "Time taken: " << duration << " ms" << std::endl;
-        std::cout << "--------------------------------------------------------" << std::endl;
+        
+        if (world_rank == 0)
+        {
+            std::cout << "Running solution for " << fileNames[j] << std::endl;
+            std::cout << "Best route Place sequence: ";
+            for (Place& place : bestRoute.places) std::cout << place << " -> ";
+            std::cout << std::endl;
+            std::cout << "Best route cost: " << bestRoute.cost << std::endl;
+            std::cout << "Time taken: " << duration << " ms" << std::endl;
+            std::cout << "--------------------------------------------------------" << std::endl;
+        }
     }
 
     MPI_Finalize();

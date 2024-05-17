@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -O3
+CXXFLAGS = -Wall -O3 -std=c++17
 LDFLAGS =
 
 # Name of the executable
