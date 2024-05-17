@@ -1,12 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=cap_vehicle_routing
 #SBATCH --output=result_%j.txt        # Output file name, where %j is the job ID
-#SBATCH --error=error_%j.txt          # Error file name, where %j is the job ID
 #SBATCH --partition=espec            # Explicitly specify the partition if needed
 #SBATCH --nodes=4                     # Total number of nodes requested
 #SBATCH --ntasks-per-node=16          # Number of tasks per node
 #SBATCH --cpus-per-task=1             # Number of CPUs per task
-#SBATCH --mem-per-cpu=100M            # Memory per CPU core
+#SBATCH --mem-per-cpu=500M            # Memory per CPU core
 
 # Calculate total number of MPI processes to start
 total_procs=$((SLURM_NTASKS_PER_NODE * SLURM_NNODES))

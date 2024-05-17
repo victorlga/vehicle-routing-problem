@@ -8,6 +8,7 @@
 #include <string>
 #include <chrono>
 #include <omp.h>
+#include <mpi.h>
 
 using Place = int;
 using Load = int;
@@ -40,8 +41,11 @@ class CapacitatedVehicleRoutingProblem
         int vehicleCapacity,
         int maxNumberOfPlacesPerRoute,
         std::map<Place, std::map<Place, Cost>> roads,
-        std::map<Place, Load>& placesDemand
-    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), roads(roads), placesDemand(placesDemand) {}
+        std::map<Place, Load>& placesDemand,
+        int world_rank,
+        int world_size
+    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute),
+        roads(roads), placesDemand(placesDemand), world_rank(world_rank), world_size(world_size) {}
 
     void solve()
     {
@@ -53,15 +57,20 @@ class CapacitatedVehicleRoutingProblem
         {
             #pragma omp single
             {
-                generateAllRouteCombinationsWithRestrictions(placesVisited, 0, 0, 0, route);
+            generateAllRouteCombinationsWithRestrictions(placesVisited, 0, 0, 0, route);
             }
         }
+
+        Route localBestRoute = bestRoute;
 
         for(auto& route : routes)
         {
             if (route.cost < bestRoute.cost)
-                bestRoute = route;
+                localBestRoute = route;
         }
+
+        // Reduce the best route from all processes
+        MPI_Allreduce(&localBestRoute.cost, &bestRoute.cost, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
     }
 
     private:
@@ -71,6 +80,8 @@ class CapacitatedVehicleRoutingProblem
     std::map<Place, std::map<Place, Cost>> roads;
     std::vector<Route> routes;
     std::map<Place, Load>& placesDemand;
+    int world_rank;
+    int world_size;
 
     void generateAllRouteCombinationsWithRestrictions(
         std::set<Place> placesVisited,
@@ -101,6 +112,14 @@ class CapacitatedVehicleRoutingProblem
                 bool loadExceeded = (vehicleLoad+placeDemand.second) > vehicleCapacity;
                 bool placesExceeded = (numberOfPlacesVisited+1) > maxNumberOfPlacesPerRoute;
                 if (loadExceeded || placesExceeded)
+                    continue;
+            }
+
+
+            // Filter route sections that are not part of the current process
+            if (placesVisited.size() == 1)
+            {
+                if (world_rank % numberOfPlaces == currentPlace)
                     continue;
             }
 
@@ -136,8 +155,14 @@ class CapacitatedVehicleRoutingProblem
 };
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    MPI_Init(&argc, &argv);
+
+    int world_size, world_rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
     std::vector<std::string> fileNames = {
         "../graphs/graph4_50.txt",
         "../graphs/graph5_50.txt",
@@ -201,7 +226,9 @@ int main()
             vehicleCapacity,
             maxNumberOfPlacesPerRoute,
             roads,
-            placesDemand
+            placesDemand,
+            world_rank,
+            world_size
         );
 
         CVRP.solve();
@@ -219,4 +246,8 @@ int main()
         std::cout << "Time taken: " << duration << " ms" << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
+
+    MPI_Finalize();
+
+    return 0;
 }

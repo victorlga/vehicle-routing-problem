@@ -206,4 +206,6 @@ int main()
         std::cout << "Time taken: " << duration << " ms" << std::endl;
         std::cout << "--------------------------------------------------------" << std::endl;
     }
+
+    return 0;
 }
