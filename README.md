@@ -32,6 +32,10 @@ The Capacitated Vehicle Routing Problem (CVRP) is an optimization challenge aime
 - **Place, Load, and Cost**: Simple aliases for `int`, used to represent different attributes of places within the routing problem.
 - **Route and Road**: Structs managing sequences of places and travel costs, central to route planning and optimization.
 
+### Parameters
+- **Vehicle Capacity**: The maximum load that a vehicle can carry, defining the constraint for each route. Set to 20 in the implementation.
+- **Max Number of Places Per Route**: The maximum number of places that can be visited in a single route. Set to 3 in the implementation. 
+
 ### Core Methods
 - **`solve()`**: The primary function that orchestrates the routing algorithm, initiating the appropriate search strategy.
 - **`generateAllRouteCombinationsWithRestrictions()`**: Employs in global search to recursively generate all possible route combinations, considering constraints.
@@ -42,9 +46,18 @@ The Capacitated Vehicle Routing Problem (CVRP) is an optimization challenge aime
 - **Heuristic and Randomized Decisions**: Core to local search, where the algorithm may choose to deviate from the typical greedy approach to potentially discover better routes.
 - **Parallel Processing**: Critical in both global and local search methods in a parallel context, enabling the algorithm to efficiently tackle larger problems by dividing the computational load.
 
-## How to Run the Code
+## How to run the Code
 - **Compilation**: The code can be compiled using the provided `Makefile` by running `make` in the terminal inside the implementation directory.
-- **Execution**: The compiled executable can be run using the command `mpirun -np <num_processes> ./cvrp <input_file>`, where `<num_processes>` is the number of MPI processes to be used and `<input_file>` is the path to the input file containing the problem instance.
+- **Execution**: The compiled executable can be run using the command `mpirun -np <num_processes> ./main`, where `<num_processes>` is the number of MPI processes to be used.
+
+## Performance Analysis
+### 1. Global Search
+
+### 2. Parallel Global Search
+
+### 3. Local Search
+
+### 4. Parallel Local Search
 
 ## Conclusion
 
