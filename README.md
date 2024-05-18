@@ -51,14 +51,43 @@ The Capacitated Vehicle Routing Problem (CVRP) is an optimization challenge aime
 - **Execution**: The compiled executable can be run using the command `mpirun -np <num_processes> ./main`, where `<num_processes>` is the number of MPI processes to be used.
 
 ## Performance Analysis
+
+The performance of the different CVRP implementations was evaluated based on the best route costs and the time taken to compute these routes. The results are summarized in the following chart:
+
+![Performance Results](results.png)
+
 ### 1. Global Search
+The global search method produced the best route costs for small numbers of cities, but its performance degraded significantly as the number of cities increased. The time taken for computations rose exponentially, making it impractical for larger problems.
 
 ### 2. Parallel Global Search
+Parallel global search with OpenMP demonstrated improved performance over the basic global search. The use of parallel threads reduced computation times, but the method still struggled with larger instances due to the inherent complexity of exploring all possible route combinations.
+
+#### Parallel Global Search with MPI
+Unfortunately, it wasn't possible to implement parallelization with MPI for the global search algorithm due to the challenges posed by its recursive nature. Recursion complicates the distribution of workload among multiple processors because each recursive call depends on the results of the previous calls. This dependency chain is difficult to manage in a parallel computing environment.
+
+However, a future implementation using iterative loops instead of recursion could potentially overcome this limitation. Iterative algorithms are more naturally parallelizable as they can often be broken down into independent tasks that can be distributed among processors. This reimplementation could make parallel global search with MPI a viable option for large-scale CVRP problems.
 
 ### 3. Local Search
+Local search provided a good balance between solution quality and computation time. The heuristic approach quickly found feasible routes, and the addition of randomness helped avoid local optima. This method showed stable performance as the number of cities increased, although the quality of the routes was sometimes suboptimal compared to global search.
+
+### 4. Parallel Local Search
+I have created two Parallel Local Searches: one using only OpenMP and another using both OpenMP and MPI.
+
+#### Parallel Local Search with OpenMP
+This method leveraged multi-threading to distribute the computation of the local search across multiple threads. This approach efficiently improved performance by reducing computation times and providing good route costs.
 
 ### 4. Parallel Local Search
 
+I have created two Parallel Local Searches: one using only OpenMP and another using both OpenMP and MPI.
+
+#### Parallel Local Search with OpenMP
+This method leveraged multi-threading to distribute the computation of the local search across multiple threads. This approach efficiently improved performance by reducing computation times and providing good route costs.
+
+#### Parallel Local Search with OpenMP and MPI
+This implementation utilized both OpenMP and MPI for parallel execution. MPI distributed the local search tasks across different processors or nodes, while OpenMP was employed within each node to exploit multi-threaded processing capabilities. However, the use of MPI made the execution more sensitive to network capabilities, which introduced some variability in performance. For smaller networks, this sensitivity sometimes led to higher execution times due to network overhead. Despite this, the implementation still showed performance improvements compared to the non-parallel implementation, but the parallel implementation using only OpenMP consistently outperformed the MPI-based approach in terms of stability and efficiency. 
+
+---
+
 ## Conclusion
 
-The CVRP implementations explored here demonstrate the application of exhaustive search strategies and heuristic approaches, enhanced by modern parallel computing techniques. By leveraging MPI and OpenMP, the solutions are not only viable for large-scale problems but are also optimized for performance, showcasing a robust framework capable of addressing complex logistical challenges.
+The CVRP implementations explored here demonstrate the application of exhaustive search strategies and heuristic approaches, enhanced by modern parallel computing techniques. By leveraging MPI and OpenMP, the solutions are not only viable for large-scale problems but are also optimized for performance, showcasing a robust framework capable of addressing complex logistical challenges. The creation of two distinct parallel local search methods—one using only OpenMP and the other combining OpenMP and MPI—highlights the potential for significant performance improvements through advanced parallelization strategies. The OpenMP-only implementation proved to be more stable and efficient, while the MPI-enhanced approach showed potential but was impacted by network sensitivities.
