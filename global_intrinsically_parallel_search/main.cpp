@@ -7,7 +7,6 @@
 #include <vector>
 #include <string>
 #include <chrono>
-#include <omp.h>
 
 using Place = int;
 using Load = int;
@@ -41,29 +40,18 @@ class CapacitatedVehicleRoutingProblem
         int maxNumberOfPlacesPerRoute,
         std::map<Place, std::map<Place, Cost>> roads,
         std::map<Place, Load>& placesDemand
-    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute),
-        roads(roads), placesDemand(placesDemand) {}
+    ) : numberOfPlaces(numberOfPlaces), vehicleCapacity(vehicleCapacity), maxNumberOfPlacesPerRoute(maxNumberOfPlacesPerRoute), roads(roads), placesDemand(placesDemand) {}
 
     void solve()
     {
-        std::set<Place> placesVisited;
-        placesVisited.insert(0);
         Route route = Route({0}, 0);
-
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                generateAllRouteCombinationsWithRestrictions(placesVisited, 0, 0, 0, route);
-            }
-        }
+        generateAllRouteCombinationsWithRestrictions();
 
         for(auto& route : routes)
         {
             if (route.cost < bestRoute.cost)
                 bestRoute = route;
         }
-
     }
 
     private:
@@ -74,74 +62,15 @@ class CapacitatedVehicleRoutingProblem
     std::vector<Route> routes;
     std::map<Place, Load>& placesDemand;
 
-    void generateAllRouteCombinationsWithRestrictions(
-        std::set<Place> placesVisited,
-        int numberOfPlacesVisited,
-        Place previousPlace,
-        Load vehicleLoad,
-        Route route
-    )
+    void generateAllRouteCombinationsWithRestrictions()
     {
-        for (auto const& placeDemand : placesDemand)
-        {
-            Place currentPlace = placeDemand.first;
-
-            // Filter repeated places
-            if (currentPlace == previousPlace)
-                continue;
-
-            // Filter unavailable roads
-            if (roads[previousPlace].find(currentPlace) == roads[previousPlace].end())
-                continue;
-
-            // Filter places already visited
-            if (placesVisited.find(currentPlace) != placesVisited.end() && currentPlace != 0)
-                continue;
-
-            if (currentPlace != 0)
-            {
-                bool loadExceeded = (vehicleLoad+placeDemand.second) > vehicleCapacity;
-                bool placesExceeded = (numberOfPlacesVisited+1) > maxNumberOfPlacesPerRoute;
-                if (loadExceeded || placesExceeded)
-                    continue;
-            }
-
-            route.cost += roads[previousPlace][currentPlace];
-            placesVisited.insert(currentPlace);
-            route.places.push_back(currentPlace);
-
-            if (currentPlace == 0)
-            {
-                if (placesVisited.size() == numberOfPlaces)
-                {
-                    #pragma omp critical
-                    routes.push_back(route);
-                    return;
-                }
-                #pragma omp task
-                generateAllRouteCombinationsWithRestrictions(placesVisited, 0, currentPlace, 0, route);
-            } else {
-                #pragma omp task
-                generateAllRouteCombinationsWithRestrictions(
-                    placesVisited,
-                    numberOfPlacesVisited+1,
-                    currentPlace,
-                    vehicleLoad+placeDemand.second,
-                    route
-                );
-            }
-
-            route.places.pop_back();
-            placesVisited.extract(currentPlace);
-            route.cost -= roads[previousPlace][currentPlace];
-        }
+        
     }
 };
 
 
 int main()
 {
-
     std::vector<std::string> fileNames = {
         "../graphs/graph4_50.txt",
         "../graphs/graph5_50.txt",
@@ -214,7 +143,7 @@ int main()
 
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        
+
         std::cout << "Running solution for " << fileNames[j] << std::endl;
         std::cout << "Best route Place sequence: ";
         for (Place& place : bestRoute.places) std::cout << place << " -> ";

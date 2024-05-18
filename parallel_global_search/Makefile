@@ -1,7 +1,7 @@
 # Makefile for MPI + OpenMP program
 
 # Compiler
-CXX = mpic++
+CXX = g++
 
 # Compiler flags
 CXXFLAGS = -O3 -fopenmp -std=c++17
