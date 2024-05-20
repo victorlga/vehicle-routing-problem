@@ -12,9 +12,8 @@ The Capacitated Vehicle Routing Problem (CVRP) is an optimization challenge aime
 - **Data Handling**: Utilizes recursive functions to build routes and applies constraints checking at each step to ensure feasibility.
 
 ### 2. Parallel Global Search
-- **Enhancements**: Extends the basic global search by incorporating parallel computing techniques, specifically OpenMP for threading and MPI for inter-process communication.
-- **Distribution Strategy**: Workloads are distributed among multiple processes, where each process is responsible for exploring a different segment of possible routes.
-- **Parallelization Benefits**: Aims to accelerate the route finding process by leveraging multiple CPUs or machines, effectively reducing computation time.
+- **Enhancements**: Extends the basic global search by incorporating parallel computing techniques, specifically OpenMP for threading, creating a task for each recursive call.
+- **Parallelization Benefits**: Aims to accelerate the route finding process by leveraging multiple CPUs, effectively reducing computation time.
 
 ### 3. Local Search
 - **Heuristic Approach**: This method employs a heuristic strategy, predominantly using a greedy heuristic that selects the next best step based on immediate, local conditions to construct an initial feasible route quickly. The heuristic focuses on finding a good, though not necessarily optimal, solution.
@@ -48,7 +47,7 @@ The Capacitated Vehicle Routing Problem (CVRP) is an optimization challenge aime
 
 ## How to run the Code
 - **Compilation**: The code can be compiled using the provided `Makefile` by running `make` in the terminal inside the implementation directory.
-- **Execution**: The compiled executable can be run using the command `mpirun -np <num_processes> ./main`, where `<num_processes>` is the number of MPI processes to be used.
+- **Execution**: The compiled executable can be run using the command `mpirun -np <num_processes> ./main`, where `<num_processes>` is the number of MPI processes to be used. In the absence of MPI, the code can be executed just by running a common `./main`.
 
 ## Performance Analysis
 
@@ -69,12 +68,6 @@ However, a future implementation using iterative loops instead of recursion coul
 
 ### 3. Local Search
 Local search provided a good balance between solution quality and computation time. The heuristic approach quickly found feasible routes, and the addition of randomness helped avoid local optima. This method showed stable performance as the number of cities increased, although the quality of the routes was sometimes suboptimal compared to global search.
-
-### 4. Parallel Local Search
-I have created two Parallel Local Searches: one using only OpenMP and another using both OpenMP and MPI.
-
-#### Parallel Local Search with OpenMP
-This method leveraged multi-threading to distribute the computation of the local search across multiple threads. This approach efficiently improved performance by reducing computation times and providing good route costs.
 
 ### 4. Parallel Local Search
 
